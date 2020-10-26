@@ -1,0 +1,31 @@
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "noEmit": true,
+    "incremental": false,
+    "isolatedModules": true,
+    "allowSyntheticDefaultImports": true,
+    "module": "esNext",
+    "target": "ES2017",
+    "sourceMap": false,
+    "experimentalDecorators": true,
+    "moduleResolution": "node",
+    "noImplicitAny": false,
+    "strict": true,
+    "skipLibCheck": true,
+    "jsx": "react",
+    "lib": [
+      "es2019",
+      "dom"
+    ]
+  },
+  "include": [
+    "./src/**/*.ts",
+    "./src/**/*.tsx",
+    "./src/**/*.jsx",
+    "./src/**/*.js"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}

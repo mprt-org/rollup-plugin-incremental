@@ -1,0 +1,6 @@
+.hello {
+    color: var(--text-color);
+    & span {
+        color: var(--count-color);
+    }
+}
