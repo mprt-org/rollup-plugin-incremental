@@ -3,7 +3,9 @@ const path = require('path')
 const name = 'rollup-plugin-incremental'
 
 module.exports = () => {
+    /** @type {Set<string>}*/
     let invalidated = new Set()
+    /** @type {Map<string, string>}*/
     let moduleToChunkMap = new Map()
     let incrementalBuild = false
     let buildProcessed = false
@@ -27,7 +29,7 @@ module.exports = () => {
             if (incrementalBuild) {
                 options.input = {}
                 for (const id of ids)
-                    options.input[path.basename(moduleToChunkMap.get(id))] = id
+                    options.input[path.basename(moduleToChunkMap.get(id) || '')] = id
             }
             else
                 moduleToChunkMap.clear()
@@ -78,7 +80,11 @@ module.exports = () => {
                     if (!chunkName.startsWith('.'))
                         chunkName = './' + chunkName
                 }
-                return {...r, id: chunkName || r.id, external: chunkName ? true : r.external}
+                return {
+                    ...r,
+                    id: chunkName || r.id,
+                    external: chunkName ? true : r.external
+                }
             }
         },
 
@@ -102,9 +108,11 @@ module.exports = () => {
             buildProcessed = true
 
             for (const chunk of Object.values(bundle)) {
+                if (chunk.type === 'asset')
+                    continue
                 const modulesNames = Object.keys(chunk.modules)
-                if (modulesNames.length > 1)
-                    this.error('Chunk includes more than one module!')
+                if (modulesNames.length !== 1)
+                    this.error('Chunk must includes exactly one module!')
                 moduleToChunkMap.set(modulesNames[0], '/' + chunk.fileName)
             }
         }
