@@ -1,13 +1,19 @@
 {
   "name": "@mprt/rollup-plugin-incremental",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Rollup plugin for incremental builds",
-  "keywords": ["rollup", "plugin", "incremental", "fast"],
+  "keywords": [
+    "rollup",
+    "plugin",
+    "incremental",
+    "fast"
+  ],
   "author": "Ivan Plesskih <terma95@gmail.com>",
   "license": "MIT",
   "main": "src/index.js",
   "scripts": {
-    "serve": "cd example && rollup -cw"
+    "serve": "cd example && rollup -cw",
+    "test": "mocha"
   },
   "repository": "https://github.com/mprt-org/rollup-plugin-incremental.git",
   "devDependencies": {
@@ -22,13 +28,16 @@
     "@rollup/plugin-url": "^5.0.1",
     "@types/react": "^16.9.49",
     "@types/react-dom": "^16.9.8",
+    "assert": "^2.0.0",
     "mobx": "^5.15.6",
     "mobx-react": "^6.3.0",
+    "mocha": "^8.2.0",
     "postcss-nested": "4",
     "react": "^16.13.1",
     "react-dom": "^16.13.1",
     "rollup": "^2.32.1",
     "rollup-plugin-postcss": "^3.1.8",
+    "sander": "^0.6.0",
     "typescript": "^4.0.2"
   }
 }

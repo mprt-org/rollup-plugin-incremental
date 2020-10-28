@@ -4,3 +4,4 @@ example
 .editorconfig
 .gitignore
 yarn.lock
+test

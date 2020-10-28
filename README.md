@@ -27,16 +27,20 @@ import incremental from '@mprt/rollup-plugin-incremental'
 
 export default {
     input: 'src/index.js',
-    treeshake: false, //ATTENTION: treeshaking must be disabled!
-    output: { //ATTENTION: there is must be only one output! 
+    //ATTENTION: treeshaking must be disabled!
+    treeshake: false,
+    //ATTENTION: there is must be only one output! 
+    output: {
         dir: 'dist',
         format: 'esm',
-        preserveModules: true, //ATTENTION: preserveModules must be enabled!
+        //ATTENTION: preserveModules must be enabled!
+        preserveModules: true,
         preserveModulesRoot: 'src',
     },
     plugins: [
-        incremental(),  //ATTENTION: plugin very likely should be first!
-                        //BTW, this plugin is noop without watch mode 
+        //ATTENTION: plugin very likely should be first!
+        //BTW, this plugin is noop without watch mode 
+        incremental(),  
         //another plugins...
     ],
 }
@@ -53,3 +57,17 @@ First build will take same time as usual, but second and next builds should be r
 - If changed file is not directly transpiles to module (ie: some babel config), then full rebuild triggered.
 - Until full rebuild triggered, watched files only added and never removed!
  So sometimes rebuilds can be triggered even if file is not part of import tree.
+- If error occurs during incremental build, all changed modules will be rebuild again on next build
+
+## Inter-plugin API
+
+This plugin exposes next [API](https://rollupjs.org/guide/en/#direct-plugin-communication):
+
+```ts
+interface IncrementalAPI {
+    /** Is current (or last, if there is no current) build is incremental? */
+    readonly incrementalBuild: boolean 
+    /** Ids of changed modules, which triggers incremental build. Null if build is not incremental */
+    readonly changedModules: null | Set<string>
+}
+```
