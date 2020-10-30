@@ -2,8 +2,31 @@ const path = require('path')
 
 const name = 'rollup-plugin-incremental'
 
-/** @type {import('rollup').PluginImpl}*/
-module.exports = () => {
+const SUFFIX = '?incremental-entry'
+
+/** @type {function(string): boolean} */
+const isIncrementalEntry = id => id.startsWith('\0') && id.endsWith(SUFFIX)
+
+/** @type {function(string): (string | null)} */
+function unwrap(id) {
+    if (!isIncrementalEntry(id))
+        return null
+    return id.slice(1, id.length - SUFFIX.length)
+}
+
+/** @type {function(string): string} */
+function wrap(id) {
+    if (isIncrementalEntry(id))
+        throw new Error('Already wrapped!')
+    return '\0' + id + SUFFIX
+}
+
+/** @type {function(any): any} */
+const cast = arg => arg
+
+/** @type {import('rollup').PluginImpl}
+ *  @return {import('rollup').Plugin} */
+module.exports = (options = {}) => {
     /** @type {Set<string>}*/
     let invalidated = new Set()
     /** @type {Map<string, string>}*/
@@ -42,7 +65,7 @@ module.exports = () => {
                     incrementalBuild = false
                     break
                 }
-                entries[path.basename(chunk)] = id
+                entries[chunk] = id
             }
 
             if (incrementalBuild) {
@@ -82,17 +105,27 @@ module.exports = () => {
         },
 
         watchChange(id) {
-            if (!this.meta.watchMode)
+            const ctx = (/** @type {any} TODO */ (this))
+            if (!ctx.meta.watchMode)
                 return
             //TODO handle deleted files
             invalidated.add(id)
         },
 
         async resolveId(id, importer) {
-            if (!this.meta.watchMode || !changedModules)
+            if (!this.meta.watchMode)
                 return
 
-            const importerChunk = importer && moduleToChunkMap.get(importer)
+            if (isIncrementalEntry(id))
+                return id
+
+            if (!changedModules)
+                return
+
+            if (!importer)
+                return id
+
+            const importerChunk = moduleToChunkMap.get(importer)
             if (!importerChunk)
                 return
 
@@ -112,6 +145,37 @@ module.exports = () => {
             }
         },
 
+        load(id) {
+            const spec = unwrap(id)
+            if (!spec)
+                return null
+
+            const info = this.getModuleInfo(spec)
+            if (!info || !info.ast)
+                this.error('???')
+
+            /** @type {import('estree').Node[]} */
+            const body = cast(info.ast).body
+
+            const hasDefault = body.some(n =>
+                n.type === 'ExportDefaultDeclaration'
+                || n.type === 'ExportNamedDeclaration' && n.specifiers.some(s => s.exported.name === 'default')
+            )
+
+            return `export * from "${spec}";` + (hasDefault ? `export { default } from "${spec}"` : '')
+        },
+
+        moduleParsed(info) {
+            if (!this.meta.watchMode || isIncrementalEntry(info.id))
+                return
+
+            this.emitFile({
+                type: 'chunk',
+                id: wrap(info.id),
+                preserveSignature: 'strict',
+            })
+        },
+
         buildEnd(err) {
             if (!this.meta.watchMode)
                 return
@@ -129,7 +193,7 @@ module.exports = () => {
             if (!this.meta.watchMode || !changedModules)
                 return
 
-            return {...options, entryFileNames: '[name]'}
+            return {...options, entryFileNames: chunk => path.basename(chunk.name)}
         },
 
         generateBundle(options, bundle) {

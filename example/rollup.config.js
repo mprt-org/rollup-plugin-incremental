@@ -3,6 +3,7 @@ import babel from '@rollup/plugin-babel'
 import postcss from 'rollup-plugin-postcss'
 import url from '@rollup/plugin-url'
 import commonjs from '@rollup/plugin-commonjs'
+import serve from 'rollup-plugin-serve'
 
 import nested from 'postcss-nested'
 
@@ -14,7 +15,7 @@ import incremental from '..'
 const options = {
     input: 'src/index.ts',
     treeshake: false,
-    preserveEntrySignatures: true,
+    preserveEntrySignatures: 'strict',
     watch: {
         clearScreen: false,
     },
@@ -37,7 +38,7 @@ const options = {
                 nested(),
             ]
         }),
-        url({limit: 0, include: '**/*.+(png|jpe?g|ico|gif|pdf|mp3|svg)', fileName: '[dirname][name][extname]', emitFiles: false}),
+        url({limit: 0, include: '**/*.+(png|jpe?g|ico|gif|pdf|mp3|svg)'}),
         babel({
             babelHelpers: 'bundled',
             extensions: ['.js', '.jsx', '.ts', '.tsx'],
@@ -53,7 +54,14 @@ const options = {
                 ['@babel/plugin-proposal-decorators', {'legacy': true}],
                 ['@babel/plugin-proposal-class-properties', { 'loose': true }],
             ]
-        })
+        }),
+        serve({
+            contentBase: 'dist',
+            historyApiFallback: '/index.html',
+            mimeTypes: {
+                'application/javascript': ['js_commonjs-proxy', 'mjs_commonjs-proxy']
+            }
+        }),
     ],
 }
 
