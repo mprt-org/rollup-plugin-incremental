@@ -7,7 +7,7 @@ A Rollup plugin which makes your (development) builds much faster, by recompilin
 
 ## Requirements
 
-This plugin requires Rollup v2.
+This plugin requires at least rollup@2.33.1
 
 ## Install
 

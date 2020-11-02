@@ -2,31 +2,30 @@ const path = require('path')
 
 const name = 'rollup-plugin-incremental'
 
-const SUFFIX = '?incremental-entry'
+const SUFFIX = '?incremental-entry.js'
 
-/** @type {function(string): boolean} */
+/** @arg id {string}
+ *  @return {boolean} */
 const isIncrementalEntry = id => id.startsWith('\0') && id.endsWith(SUFFIX)
 
-/** @type {function(string): (string | null)} */
+/** @arg id {string}
+ *  @return {null | string} */
 function unwrap(id) {
     if (!isIncrementalEntry(id))
         return null
     return id.slice(1, id.length - SUFFIX.length)
 }
 
-/** @type {function(string): string} */
+/** @arg id {string}
+ *  @return {string} */
 function wrap(id) {
     if (isIncrementalEntry(id))
         throw new Error('Already wrapped!')
     return '\0' + id + SUFFIX
 }
 
-/** @type {function(any): any} */
-const cast = arg => arg
-
-/** @type {import('rollup').PluginImpl}
- *  @return {import('rollup').Plugin} */
-module.exports = (options = {}) => {
+/** @return {import('rollup').Plugin} */
+module.exports = () => {
     /** @type {Set<string>}*/
     let invalidated = new Set()
     /** @type {Map<string, string>}*/
@@ -34,6 +33,10 @@ module.exports = (options = {}) => {
     let buildProcessed = false
     /** @type {Set<string> | null}*/
     let changedModules = null
+    /** @type {Map<string, string>}*/
+    let incEntries = new Map()
+    /** @type {Array<string>}*/
+    let prevWatched = []
 
     return {
         name,
@@ -73,6 +76,7 @@ module.exports = (options = {}) => {
             }
             else {
                 moduleToChunkMap.clear()
+                incEntries.clear()
                 changedModules = null
             }
 
@@ -82,10 +86,6 @@ module.exports = (options = {}) => {
         buildStart(options) {
             if (!this.meta.watchMode)
                 return
-
-            //TODO check rollup version by this.getWatchFiles
-            //TODO add to peerDependencies
-            //TODO add to readme
 
             if (options.plugins[0].name !== name)
                 this.warn('This plugin must be first in "plugins", otherwise it might be bad!')
@@ -99,14 +99,12 @@ module.exports = (options = {}) => {
             if (!changedModules)
                 return
 
-            for (const file of moduleToChunkMap.keys())
-                if (!file.startsWith('\0'))
-                    this.addWatchFile(file)
+            for (const file of prevWatched)
+                this.addWatchFile(file)
         },
 
         watchChange(id) {
-            const ctx = (/** @type {any} TODO */ (this))
-            if (!ctx.meta.watchMode)
+            if (!this.meta.watchMode)
                 return
             //TODO handle deleted files
             invalidated.add(id)
@@ -125,23 +123,14 @@ module.exports = (options = {}) => {
             if (!importer)
                 return id
 
-            const importerChunk = moduleToChunkMap.get(importer)
-            if (!importerChunk)
-                return
-
-            const r = await this.resolve(id, importer, {skipSelf: true})
-            if (r) {
-                let chunkName = moduleToChunkMap.get(r.id)
-                if (chunkName) {
-                    chunkName = path.relative(path.dirname(importerChunk), chunkName)
-                    if (!chunkName.startsWith('.'))
-                        chunkName = './' + chunkName
-                }
-                return {
-                    ...r,
-                    id: chunkName || r.id,
-                    external: chunkName ? true : r.external
-                }
+            if (isIncrementalEntry(importer)) {
+                return {id, external: true}
+            }
+            if (changedModules.has(importer)) {
+                const r = await this.resolve(id, importer, {skipSelf: true})
+                if (r && incEntries.has(r.id))
+                    return wrap(r.id)
+                return r
             }
         },
 
@@ -150,19 +139,27 @@ module.exports = (options = {}) => {
             if (!spec)
                 return null
 
-            const info = this.getModuleInfo(spec)
-            if (!info || !info.ast)
-                this.error('???')
+            let code = incEntries.get(spec)
+            if (!code) {
+                const info = this.getModuleInfo(spec)
+                if (!info || !info.ast)
+                    this.error('???')
 
-            /** @type {import('estree').Node[]} */
-            const body = cast(info.ast).body
+                if (!('syntheticNamedExports' in info))
+                    this.error('Update rollup to v2.33.1 or above!')
 
-            const hasDefault = body.some(n =>
-                n.type === 'ExportDefaultDeclaration'
-                || n.type === 'ExportNamedDeclaration' && n.specifiers.some(s => s.exported.name === 'default')
-            )
+                let sne = info.syntheticNamedExports || null
+                if (sne === true)
+                    sne = 'default'
 
-            return `export * from "${spec}";` + (hasDefault ? `export { default } from "${spec}"` : '')
+                code = [
+                    `import * as sne from "${spec}"`,
+                    sne
+                        ? `import {${sne}} from "${spec}"; export const __incSne = {...${sne}, ...sne}`
+                        : 'export const __incSne = {...sne}',
+                ].filter(Boolean).join('\n')
+            }
+            return {code, syntheticNamedExports: changedModules ? '__incSne' : false}
         },
 
         moduleParsed(info) {
@@ -180,7 +177,7 @@ module.exports = (options = {}) => {
             if (!this.meta.watchMode)
                 return
 
-            //TODO get watch files from context
+            prevWatched = this.getWatchFiles()
 
             if (!err || !changedModules)
                 return
@@ -214,7 +211,12 @@ module.exports = (options = {}) => {
                 const modulesNames = Object.keys(chunk.modules)
                 if (modulesNames.length !== 1)
                     this.error('Chunk must includes exactly one module!')
-                moduleToChunkMap.set(modulesNames[0], '/' + chunk.fileName)
+                const moduleName = modulesNames[0]
+                moduleToChunkMap.set(moduleName, '/' + chunk.fileName)
+
+                const incModule = unwrap(moduleName)
+                if (incModule && !incEntries.has(incModule))
+                    incEntries.set(incModule, chunk.code)
             }
         }
     }

@@ -7,6 +7,8 @@ import serve from 'rollup-plugin-serve'
 
 import nested from 'postcss-nested'
 
+import fs from 'fs'
+
 import incremental from '..'
 
 /**
@@ -62,6 +64,15 @@ const options = {
                 'application/javascript': ['js_commonjs-proxy', 'mjs_commonjs-proxy']
             }
         }),
+        {
+            buildStart() {
+                this.emitFile({
+                    type: 'asset',
+                    source: fs.readFileSync(__dirname + '/src/index.html'),
+                    fileName: 'index.html'
+                })
+            }
+        }
     ],
 }
 
