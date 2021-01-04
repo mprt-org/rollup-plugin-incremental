@@ -175,10 +175,23 @@ describe('rollup-plugin-incremental', () => {
 
     //TODO build errors
 
-    //TODO deep files changes
+    //TODO changed files in second and more level directories
 
     //TODO multi chunks
 
     //TODO throws on duplicated
 
+    //TODO file deleted
+
+    //TODO file added
+
+    //TODO working with sne
+
+    //TODO working with true and default sne
+
+    //TODO if file has no importers, does not recompile on its change
+
+    //TODO works with dynamic imports
+
+    //TODO rewatch file after removing from imports and back again
 })

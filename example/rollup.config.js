@@ -26,6 +26,7 @@ const options = {
         format: 'esm',
         preserveModules: true,
         preserveModulesRoot: 'src',
+        minifyInternalExports: false,
     },
     plugins: [
         incremental(),
@@ -72,7 +73,8 @@ const options = {
                     fileName: 'index.html'
                 })
             }
-        }
+        },
+        incremental.fixSNE(),
     ],
 }
 

@@ -36,12 +36,19 @@ export default {
         //ATTENTION: preserveModules must be enabled!
         preserveModules: true,
         preserveModulesRoot: 'src',
+        //ATTENTION: minifyInternalExports must be disabled!
+        minifyInternalExports: false,
     },
     plugins: [
         //ATTENTION: plugin very likely should be first!
         //BTW, this plugin is noop without watch mode 
         incremental(),  
+        
         //another plugins...
+        
+        //ATTENTION: this fixes issues with syntheticNamedExports in commonjs modules
+        //it should be last 
+        incremental.fixSNE(),
     ],
 }
 ```
@@ -50,14 +57,16 @@ And then...
 rollup -cw
 ```
 
+There is simple typical ts, react and mobx web app in example folder.
+
 First build will take same time as usual, but second and next builds should be really fast - below a second. 
 
 ## Gotchas
 
 - If changed file is not directly transpiles to module (ie: some babel config), then full rebuild triggered.
-- Until full rebuild triggered, watched files only added and never removed!
- So sometimes rebuilds can be triggered even if file is not part of import tree.
 - If error occurs during incremental build, all changed modules will be rebuild again on next build
+- Currently it works by replacing `input` option on incremental builds, so it cannot work with another plugins which
+works with `input`, i.e. multi-entry plugin
 
 ## Inter-plugin API
 

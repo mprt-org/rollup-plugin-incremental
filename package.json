@@ -1,6 +1,6 @@
 {
   "name": "@mprt/rollup-plugin-incremental",
-  "version": "0.0.3",
+  "version": "0.1.0",
   "description": "Rollup plugin for incremental builds",
   "keywords": [
     "rollup",
