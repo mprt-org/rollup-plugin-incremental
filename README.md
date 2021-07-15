@@ -56,6 +56,7 @@ And then...
 ```console
 rollup -cw
 ```
+NOTE: You MUST use watch mode with this plugin.
 
 There is simple typical ts, react and mobx web app in example folder.
 
